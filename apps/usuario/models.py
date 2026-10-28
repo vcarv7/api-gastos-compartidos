@@ -26,10 +26,11 @@ class User(AbstractUser):
 
     class Meta:
         constraints = [
-            # ``unique=True`` above compares raw bytes, so "Victor@mail.com" and
-            # "victor@mail.com" would both be accepted. This functional index
-            # makes uniqueness case-insensitive at the database level.
+            # ``unique=True`` on the fields compares raw bytes, so "Victor@mail.com"
+            # and "victor@mail.com" would both be accepted. These functional
+            # indexes make uniqueness case-insensitive at the database level.
             models.UniqueConstraint(Lower("email"), name="unique_email_ci"),
+            models.UniqueConstraint(Lower("username"), name="unique_username_ci"),
         ]
 
     def __str__(self):
