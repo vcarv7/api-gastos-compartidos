@@ -66,7 +66,9 @@ DRF_APPS = [
     "rest_framework",
 ]
 
-LOCAL_APPS = []
+LOCAL_APPS = [
+    "apps.usuario",
+]
 
 INSTALLED_APPS = DJANGO_APPS + DRF_APPS + LOCAL_APPS
 
@@ -115,6 +117,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 # --- Authentication --------------------------------------------------------
+
+# Declared before the first migration on purpose: changing the user model
+# afterwards means dropping the database and every migration.
+AUTH_USER_MODEL = "usuario.User"
 
 AUTH_PASSWORD_VALIDATORS = [
     {
