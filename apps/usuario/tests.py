@@ -4,12 +4,14 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from rest_framework import status
 from rest_framework.test import APITestCase
+from rest_framework_simplejwt.tokens import RefreshToken
 
 User = get_user_model()
 
 REGISTER_URL = "/api/v1/usuario/register/"
 TOKEN_URL = "/api/v1/usuario/token/"
 REFRESH_URL = "/api/v1/usuario/token/refresh/"
+ME_URL = "/api/v1/usuario/me/"
 PASSWORD = "Zx9#mundoLargo"
 
 
@@ -139,3 +141,44 @@ class LoginViewTests(APITestCase):
 
         reused = self.client.post(REFRESH_URL, {"refresh": first})
         self.assertEqual(reused.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class MeViewTests(APITestCase):
+    def setUp(self):
+        cache.clear()
+        self.user = User.objects.create_user(
+            username="victor", email="victor@mail.com", password=PASSWORD
+        )
+        access = RefreshToken.for_user(self.user).access_token
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+
+    def test_requires_authentication(self):
+        self.client.credentials()
+
+        response = self.client.get(ME_URL)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_returns_current_user(self):
+        response = self.client.get(ME_URL)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["username"], "victor")
+        self.assertEqual(response.data["id"], str(self.user.id))
+        self.assertNotIn("password", response.data)
+
+    def test_rejects_token_after_password_change(self):
+        self.user.set_password("OtraClave#2026")
+        self.user.save()
+
+        response = self.client.get(ME_URL)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_rejects_token_for_deactivated_user(self):
+        self.user.is_active = False
+        self.user.save()
+
+        response = self.client.get(ME_URL)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

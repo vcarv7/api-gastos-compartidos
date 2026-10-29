@@ -75,3 +75,12 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"detail": "An account with these details already exists."}
             )
+
+
+class UserSerializer(serializers.ModelSerializer):
+    """Read-only representation of a user, safe to return to its owner."""
+
+    class Meta:
+        model = User
+        fields = ("id", "username", "email", "phone", "photo")
+        read_only_fields = fields

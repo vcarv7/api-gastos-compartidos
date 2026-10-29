@@ -1,13 +1,13 @@
 """Views for version 1 of the usuario API."""
 
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .serializers import RegisterSerializer
+from .serializers import RegisterSerializer, UserSerializer
 
 
 class RegisterView(APIView):
@@ -34,3 +34,19 @@ class LoginView(TokenObtainPairView):
 
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "login"
+
+
+class MeView(APIView):
+    """Return the authenticated user.
+
+    The identity comes from the token, not from the URL, so there is no way to
+    read somebody else's profile through this endpoint.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # context={"request": request} lets ImageField build an absolute URL
+        # for photo; without it the client receives a relative path.
+        serializer = UserSerializer(request.user, context={"request": request})
+        return Response(serializer.data)
