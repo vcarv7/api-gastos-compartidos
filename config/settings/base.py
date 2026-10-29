@@ -171,3 +171,13 @@ EMAIL_HOST_USER = env("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
 EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "no-reply@localhost")
+
+
+# --- Django REST Framework -------------------------------------------------
+
+# Throttle scopes are declared here so views can name a scope and stop caring
+# about the numbers. AnonRateThrottle raises ImproperlyConfigured at request
+# time when its scope is missing.
+REST_FRAMEWORK = {
+    "DEFAULT_THROTTLE_RATES": {"anon": "20/min"},
+}
