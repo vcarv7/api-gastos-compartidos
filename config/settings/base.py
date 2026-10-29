@@ -7,6 +7,7 @@ code runs unchanged everywhere.
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -64,6 +65,7 @@ DJANGO_APPS = [
 
 DRF_APPS = [
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
 ]
 
 LOCAL_APPS = [
@@ -179,5 +181,32 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "no-reply@localhost")
 # about the numbers. AnonRateThrottle raises ImproperlyConfigured at request
 # time when its scope is missing.
 REST_FRAMEWORK = {
-    "DEFAULT_THROTTLE_RATES": {"anon": "20/min"},
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        # Kept for the browsable API and the admin during development. It only
+        # engages when a session cookie is present.
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "20/min",
+        "login": "5/min",
+    },
+}
+
+
+# --- JWT -------------------------------------------------------------------
+
+# Tokens are returned in the JSON body: clients send them back as
+# "Authorization: Bearer <access>". No cookie transport, therefore no CSRF.
+SIMPLE_JWT = {
+    # Short-lived access keeps the blast radius of a leaked token small.
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    # A rotated refresh is blacklisted, so a stolen one dies on reuse.
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    # Without this last_login stays None forever.
+    "UPDATE_LAST_LOGIN": True,
+    # Embeds a hash of the password: changing it revokes every older token.
+    "CHECK_REVOKE_TOKEN": True,
 }

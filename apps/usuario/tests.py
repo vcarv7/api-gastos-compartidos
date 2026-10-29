@@ -8,6 +8,8 @@ from rest_framework.test import APITestCase
 User = get_user_model()
 
 REGISTER_URL = "/api/v1/usuario/register/"
+TOKEN_URL = "/api/v1/usuario/token/"
+REFRESH_URL = "/api/v1/usuario/token/refresh/"
 PASSWORD = "Zx9#mundoLargo"
 
 
@@ -79,3 +81,61 @@ class RegisterViewTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertCountEqual(response.data.keys(), ["username", "email", "password"])
+
+
+class LoginViewTests(APITestCase):
+    def setUp(self):
+        cache.clear()
+        self.user = User.objects.create_user(
+            username="victor", email="victor@mail.com", password=PASSWORD
+        )
+
+    def test_login_returns_token_pair(self):
+        response = self.client.post(
+            TOKEN_URL, {"username": "victor", "password": PASSWORD}
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
+
+    def test_login_rejects_bad_password(self):
+        response = self.client.post(
+            TOKEN_URL, {"username": "victor", "password": "incorrecta"}
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_login_rejects_inactive_user(self):
+        self.user.is_active = False
+        self.user.save()
+
+        response = self.client.post(
+            TOKEN_URL, {"username": "victor", "password": PASSWORD}
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_login_is_throttled(self):
+        for _ in range(5):
+            self.client.post(
+                TOKEN_URL, {"username": "victor", "password": "incorrecta"}
+            )
+
+        response = self.client.post(
+            TOKEN_URL, {"username": "victor", "password": "incorrecta"}
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+    def test_refresh_rotates_and_blacklists_the_old_token(self):
+        first = self.client.post(
+            TOKEN_URL, {"username": "victor", "password": PASSWORD}
+        ).data["refresh"]
+
+        rotated = self.client.post(REFRESH_URL, {"refresh": first})
+        self.assertEqual(rotated.status_code, status.HTTP_200_OK)
+        self.assertIn("refresh", rotated.data)
+
+        reused = self.client.post(REFRESH_URL, {"refresh": first})
+        self.assertEqual(reused.status_code, status.HTTP_401_UNAUTHORIZED)
