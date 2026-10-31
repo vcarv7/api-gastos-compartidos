@@ -12,6 +12,8 @@ REGISTER_URL = "/api/v1/usuario/register/"
 TOKEN_URL = "/api/v1/usuario/token/"
 REFRESH_URL = "/api/v1/usuario/token/refresh/"
 ME_URL = "/api/v1/usuario/me/"
+SCHEMA_URL = "/api/schema/"
+DOCS_URL = "/api/docs/"
 PASSWORD = "Zx9#mundoLargo"
 
 
@@ -182,3 +184,34 @@ class MeViewTests(APITestCase):
         response = self.client.get(ME_URL)
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class DocumentationAccessTests(APITestCase):
+    def setUp(self):
+        cache.clear()
+
+    def test_schema_is_not_public(self):
+        response = self.client.get(SCHEMA_URL)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_swagger_ui_is_not_public(self):
+        response = self.client.get(DOCS_URL)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_staff_can_read_the_schema(self):
+        staff = User.objects.create_user(
+            username="staff",
+            email="staff@mail.com",
+            password=PASSWORD,
+            is_staff=True,
+        )
+        self.client.force_authenticate(staff)
+
+        response = self.client.get(SCHEMA_URL)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        body = response.content.decode()
+        self.assertIn("/api/v1/usuario/register/", body)
+        self.assertIn("/api/v1/usuario/me/", body)

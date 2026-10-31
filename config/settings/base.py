@@ -66,6 +66,7 @@ DJANGO_APPS = [
 DRF_APPS = [
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
+    "drf_spectacular",
 ]
 
 LOCAL_APPS = [
@@ -181,6 +182,9 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "no-reply@localhost")
 # about the numbers. AnonRateThrottle raises ImproperlyConfigured at request
 # time when its scope is missing.
 REST_FRAMEWORK = {
+    # Without this, every view keeps DRF's built-in AutoSchema and the
+    # generator aborts on the drf-spectacular documentation views themselves.
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
         # Kept for the browsable API and the admin during development. It only
@@ -209,4 +213,22 @@ SIMPLE_JWT = {
     "UPDATE_LAST_LOGIN": True,
     # Embeds a hash of the password: changing it revokes every older token.
     "CHECK_REVOKE_TOKEN": True,
+}
+
+
+# --- API documentation -----------------------------------------------------
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "API Gastos Compartidos",
+    "DESCRIPTION": "Gestión de gastos compartidos entre grupos.",
+    "VERSION": "1.0.0",
+    # Group and tag operations by API version.
+    "SCHEMA_PATH_PREFIX": "/api/v1",
+    # Do not document the schema endpoint itself.
+    "SERVE_INCLUDE_SCHEMA": False,
+    # Separate request and response components so neither lies about required
+    # fields (``id`` is required on the way out, absent on the way in).
+    "COMPONENT_SPLIT_REQUEST": True,
+    # The schema maps the whole API surface, so it is staff-only.
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAdminUser"],
 }

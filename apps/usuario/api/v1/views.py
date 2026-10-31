@@ -1,5 +1,6 @@
 """Views for version 1 of the usuario API."""
 
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -20,6 +21,17 @@ class RegisterView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
 
+    @extend_schema(
+        request=RegisterSerializer,
+        responses={
+            201: RegisterSerializer,
+            400: OpenApiResponse(
+                description="Validation error. One entry per invalid field."
+            ),
+            429: OpenApiResponse(description="Rate limit exceeded."),
+        },
+        summary="Create an account",
+    )
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         # raise_exception=True is what turns validation failures into a 400.
@@ -45,6 +57,10 @@ class MeView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        responses={200: UserSerializer},
+        summary="Return the authenticated user",
+    )
     def get(self, request):
         # context={"request": request} lets ImageField build an absolute URL
         # for photo; without it the client receives a relative path.
