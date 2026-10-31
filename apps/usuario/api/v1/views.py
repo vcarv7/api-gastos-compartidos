@@ -1,6 +1,10 @@
 """Views for version 1 of the usuario API."""
 
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+from drf_spectacular.utils import (
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+)
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -22,6 +26,7 @@ class RegisterView(APIView):
     throttle_classes = [AnonRateThrottle]
 
     @extend_schema(
+        tags=["Cuentas"],
         request=RegisterSerializer,
         responses={
             201: RegisterSerializer,
@@ -41,6 +46,7 @@ class RegisterView(APIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
+@extend_schema_view(post=extend_schema(tags=["Sesiones"]))
 class LoginView(TokenObtainPairView):
     """Issue an access/refresh pair. Brute force lives here, not in register."""
 
@@ -58,6 +64,7 @@ class MeView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
+        tags=["Cuentas"],
         responses={200: UserSerializer},
         summary="Return the authenticated user",
     )

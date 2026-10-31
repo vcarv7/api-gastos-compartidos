@@ -255,3 +255,39 @@ class SwaggerUiRegressionTests(APITestCase):
 
         self.assertEqual(browser.get(SCHEMA_URL).status_code, status.HTTP_200_OK)
         self.assertEqual(browser.get(DOCS_URL).status_code, status.HTTP_200_OK)
+
+
+class DocumentationGroupingTests(APITestCase):
+    """Operations must be grouped by domain, not by folder."""
+
+    def setUp(self):
+        cache.clear()
+        staff = User.objects.create_user(
+            username="staff",
+            email="staff@mail.com",
+            password=PASSWORD,
+            is_staff=True,
+        )
+        self.client.force_authenticate(staff)
+
+    def test_operations_are_grouped_into_two_tags(self):
+        response = self.client.get(SCHEMA_URL, {"format": "json"})
+
+        paths = response.json()["paths"]
+        grouping = {
+            path: operation[method]["tags"][0]
+            for path, operation in paths.items()
+            for method in operation
+        }
+
+        self.assertEqual(
+            grouping,
+            {
+                "/api/v1/usuario/register/": "Cuentas",
+                "/api/v1/usuario/me/": "Cuentas",
+                "/api/v1/usuario/token/": "Sesiones",
+                "/api/v1/usuario/token/refresh/": "Sesiones",
+                "/api/v1/usuario/token/verify/": "Sesiones",
+                "/api/v1/usuario/token/blacklist/": "Sesiones",
+            },
+        )

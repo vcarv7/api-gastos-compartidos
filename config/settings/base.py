@@ -223,6 +223,16 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "API Gastos Compartidos",
     "DESCRIPTION": "Gestión de gastos compartidos entre grupos.",
     "VERSION": "1.0.0",
+    # Explicit order and descriptions for the operation groups. Without this the
+    # UI sorts them alphabetically, which will not match the domain once Grupos
+    # and Gastos exist.
+    "TAGS": [
+        {"name": "Cuentas", "description": "Creación de cuenta y perfil propio."},
+        {
+            "name": "Sesiones",
+            "description": "Emisión, renovación y revocación de tokens.",
+        },
+    ],
     # Group and tag operations by API version.
     "SCHEMA_PATH_PREFIX": "/api/v1",
     # Do not document the schema endpoint itself.
