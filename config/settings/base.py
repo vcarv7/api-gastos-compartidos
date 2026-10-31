@@ -186,10 +186,11 @@ REST_FRAMEWORK = {
     # generator aborts on the drf-spectacular documentation views themselves.
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        # JWT only. A browser session must not authenticate an API request:
+        # with SessionAuthentication in this list, every unsafe request sent
+        # from Swagger UI is authenticated by the admin cookie and then rejected
+        # by CSRF, because Swagger cannot attach an X-CSRFToken header.
         "rest_framework_simplejwt.authentication.JWTAuthentication",
-        # Kept for the browsable API and the admin during development. It only
-        # engages when a session cookie is present.
-        "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_THROTTLE_RATES": {
         "anon": "20/min",
@@ -231,4 +232,15 @@ SPECTACULAR_SETTINGS = {
     "COMPONENT_SPLIT_REQUEST": True,
     # The schema maps the whole API surface, so it is staff-only.
     "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAdminUser"],
+    # The documentation pages are HTML rendered for a browser, so they keep
+    # session authentication even though the API itself is JWT-only.
+    "SERVE_AUTHENTICATION": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    # Pinned on purpose. Both default to "@latest", and ReDoc 3 switched to an
+    # ES module that a classic <script> tag cannot execute, which rendered
+    # /api/redoc/ blank. A floating tag means the docs can break without a
+    # single change in this repository.
+    "SWAGGER_UI_DIST": "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.34.1",
+    "REDOC_DIST": "https://cdn.jsdelivr.net/npm/redoc@2.1.5",
 }

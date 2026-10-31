@@ -2,6 +2,7 @@
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.test import Client
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -187,18 +188,22 @@ class MeViewTests(APITestCase):
 
 
 class DocumentationAccessTests(APITestCase):
+    """The docs authenticate with SessionAuthentication, which defines no
+    authenticate_header. DRF can only answer 401 when an authenticator can send
+    a WWW-Authenticate challenge, so anonymous access is refused with 403."""
+
     def setUp(self):
         cache.clear()
 
     def test_schema_is_not_public(self):
         response = self.client.get(SCHEMA_URL)
 
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_swagger_ui_is_not_public(self):
         response = self.client.get(DOCS_URL)
 
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_staff_can_read_the_schema(self):
         staff = User.objects.create_user(
@@ -215,3 +220,38 @@ class DocumentationAccessTests(APITestCase):
         body = response.content.decode()
         self.assertIn("/api/v1/usuario/register/", body)
         self.assertIn("/api/v1/usuario/me/", body)
+
+
+class SwaggerUiRegressionTests(APITestCase):
+    """A staff session must not leak into the API itself."""
+
+    def setUp(self):
+        cache.clear()
+        self.staff = User.objects.create_user(
+            username="staff",
+            email="staff@mail.com",
+            password=PASSWORD,
+            is_staff=True,
+        )
+
+    def test_register_works_from_a_logged_in_browser(self):
+        # Exactly what Swagger UI sends: session cookie, no CSRF header.
+        browser = Client(HTTP_HOST="localhost", enforce_csrf_checks=True)
+        browser.force_login(self.staff)
+
+        response = browser.post(
+            REGISTER_URL,
+            {"username": "victor", "email": "Victor@Mail.com", "password": PASSWORD},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(User.objects.filter(username="victor").exists())
+
+    def test_documentation_opens_with_a_real_session(self):
+        # force_login runs the authenticator; force_authenticate bypasses it.
+        browser = Client(HTTP_HOST="localhost")
+        browser.force_login(self.staff)
+
+        self.assertEqual(browser.get(SCHEMA_URL).status_code, status.HTTP_200_OK)
+        self.assertEqual(browser.get(DOCS_URL).status_code, status.HTTP_200_OK)
